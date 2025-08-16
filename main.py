@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
 import json
+import requests
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -23,7 +24,8 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 DATABASE_FILE = 'girltalk_bot.db'
 GOOGLE_CALENDAR_ON = True
 # Get calendar ID from Replit Secrets
-CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID', 'primary')  # Use shared calendar ID from Secrets
+CALENDAR_ID = os.getenv('GOOGLE_CALENDAR_ID',
+                        'primary')  # Use shared calendar ID from Secrets
 # GOOGLE_CALENDAR_ON = os.getenv('GOOGLE_CALENDAR_ON', 'false').lower() == 'true'  # Feature toggle for Google Calendar
 
 
@@ -41,31 +43,34 @@ class GirlTalkBot:
     def init_database(self):
         """Initialize SQLite database from schema file"""
         logger.debug(f"Initializing database: {DATABASE_FILE}")
-        
+
         # Check if schema.sql exists
         if not os.path.exists('schema.sql'):
             logger.error("schema.sql file not found!")
-            raise FileNotFoundError("schema.sql is required for database initialization")
-        
+            raise FileNotFoundError(
+                "schema.sql is required for database initialization")
+
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
-        
+
         # Read and execute schema from file
         logger.debug("Loading database schema from schema.sql")
         with open('schema.sql', 'r') as schema_file:
             schema_sql = schema_file.read()
-        
+
         # Execute schema statements
         cursor.executescript(schema_sql)
-        
+
         # Add calendar_link column if it doesn't exist (for existing databases migration)
         try:
-            cursor.execute('ALTER TABLE meetings ADD COLUMN calendar_link TEXT')
-            logger.debug("Added calendar_link column to existing meetings table")
+            cursor.execute(
+                'ALTER TABLE meetings ADD COLUMN calendar_link TEXT')
+            logger.debug(
+                "Added calendar_link column to existing meetings table")
         except sqlite3.OperationalError:
             # Column already exists
             pass
-        
+
         conn.commit()
         conn.close()
         logger.info("Database initialized successfully from schema.sql")
@@ -95,7 +100,9 @@ class GirlTalkBot:
 
             logger.debug("Building Calendar service")
             self.calendar_service = build('calendar', 'v3', credentials=creds)
-            logger.info("Google Calendar service initialized successfully with service account")
+            logger.info(
+                "Google Calendar service initialized successfully with service account"
+            )
 
         except Exception as e:
             logger.error(f"Error setting up Google Calendar: {e}")
@@ -395,8 +402,7 @@ class GirlTalkBot:
                 f"📝 {meeting[5]}\n"  # description is at index 5
                 f"🕐 {start_time.strftime('%Y-%m-%d at %H:%M')}\n"
                 f"👩‍💼 Created by: @{meeting[3]}\n"  # creator_username is at index 3
-                f"👥 Registered: {registration_count} members\n"
-            )
+                f"👥 Registered: {registration_count} members\n")
 
             # Add calendar link if available (calendar_link is at index 8)
             if len(meeting) > 8 and meeting[8]:
@@ -443,8 +449,7 @@ class GirlTalkBot:
                 f"🌸 **{meeting[4]}**\n"  # title is at index 4
                 f"📝 {meeting[5]}\n"  # description is at index 5
                 f"🕐 {start_time.strftime('%Y-%m-%d at %H:%M')}\n"
-                f"👥 Registered: {registration_count} members\n"
-            )
+                f"👥 Registered: {registration_count} members\n")
 
             # Add calendar link if available (calendar_link is at index 8)
             if len(meeting) > 8 and meeting[8]:
@@ -473,7 +478,8 @@ class GirlTalkBot:
         if data.startswith("register_"):
             meeting_id = int(data.split("_")[1])
             logger.debug(
-                f"User {user_id} attempting to register for meeting {meeting_id}")
+                f"User {user_id} attempting to register for meeting {meeting_id}"
+            )
             success = self.register_user_for_meeting(meeting_id, user_id,
                                                      username)
 
@@ -515,21 +521,25 @@ class GirlTalkBot:
             # meeting columns: id, event_id, creator_id, creator_username, title, description, start_time, end_time, created_at
             if meeting and meeting[2] == user_id:  # creator_id is at index 2
                 logger.debug(
-                    f"User {user_id} authorized to delete meeting {meeting_id}")
+                    f"User {user_id} authorized to delete meeting {meeting_id}"
+                )
                 success = await self.delete_meeting(meeting_id, meeting[2])
                 if success:
                     logger.info(
-                        f"User {user_id} successfully deleted meeting {meeting_id}")
+                        f"User {user_id} successfully deleted meeting {meeting_id}"
+                    )
                     await query.edit_message_text(
                         "🗑️ Meeting deleted successfully!")
                 else:
                     logger.error(
-                        f"Failed to delete meeting {meeting_id} for user {user_id}")
+                        f"Failed to delete meeting {meeting_id} for user {user_id}"
+                    )
                     await query.message.reply_text(
                         "❌ Error deleting meeting. Please try again.")
             else:
                 logger.warning(
-                    f"User {user_id} unauthorized to delete meeting {meeting_id}")
+                    f"User {user_id} unauthorized to delete meeting {meeting_id}"
+                )
                 await query.message.reply_text(
                     "❌ You can only delete meetings you created.")
 
@@ -559,9 +569,8 @@ class GirlTalkBot:
         if len(meeting) > 8 and meeting[8]:
             stats_text += f"📞 Join Meeting: {meeting[8]}\n"
 
-        stats_text += (
-            f"\n👥 Registration Stats:\n"
-            f"• Total registered: {registration_count} members\n\n")
+        stats_text += (f"\n👥 Registration Stats:\n"
+                       f"• Total registered: {registration_count} members\n\n")
 
         if registrations:
             stats_text += "📋 Registered Members:\n"
