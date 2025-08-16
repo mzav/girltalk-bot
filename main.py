@@ -829,6 +829,5 @@ def main():
         logger.error(f"Fatal error starting bot: {e}")
         raise
 
-
 if __name__ == '__main__':
     main()
