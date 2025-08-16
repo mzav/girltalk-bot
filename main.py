@@ -39,53 +39,36 @@ class GirlTalkBot:
         self.setup_google_calendar()
 
     def init_database(self):
-        """Initialize SQLite database for storing meeting data"""
+        """Initialize SQLite database from schema file"""
         logger.debug(f"Initializing database: {DATABASE_FILE}")
+        
+        # Check if schema.sql exists
+        if not os.path.exists('schema.sql'):
+            logger.error("schema.sql file not found!")
+            raise FileNotFoundError("schema.sql is required for database initialization")
+        
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
-
-        # Create meetings table
-        logger.debug("Creating meetings table")
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS meetings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_id TEXT UNIQUE,
-                creator_id INTEGER,
-                creator_username TEXT,
-                title TEXT,
-                description TEXT,
-                start_time TEXT,
-                end_time TEXT,
-                calendar_link TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-
-        # Add calendar_link column if it doesn't exist (for existing databases)
+        
+        # Read and execute schema from file
+        logger.debug("Loading database schema from schema.sql")
+        with open('schema.sql', 'r') as schema_file:
+            schema_sql = schema_file.read()
+        
+        # Execute schema statements
+        cursor.executescript(schema_sql)
+        
+        # Add calendar_link column if it doesn't exist (for existing databases migration)
         try:
             cursor.execute('ALTER TABLE meetings ADD COLUMN calendar_link TEXT')
             logger.debug("Added calendar_link column to existing meetings table")
         except sqlite3.OperationalError:
             # Column already exists
             pass
-
-        # Create registrations table
-        logger.debug("Creating registrations table")
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS registrations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                meeting_id INTEGER,
-                user_id INTEGER,
-                username TEXT,
-                registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (meeting_id) REFERENCES meetings (id),
-                UNIQUE(meeting_id, user_id)
-            )
-        ''')
-
+        
         conn.commit()
         conn.close()
-        logger.info("Database initialized successfully")
+        logger.info("Database initialized successfully from schema.sql")
 
     def setup_google_calendar(self):
         """Setup Google Calendar API service using service account"""
